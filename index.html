@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pretext-webxr demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; overflow: hidden; font-family: system-ui, sans-serif; }
+    canvas { display: block; }
+    #info {
+      position: absolute; top: 12px; left: 12px; color: #aaa; font-size: 14px;
+      pointer-events: none; z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">pretext-webxr &mdash; orbit with mouse &bull; scroll to zoom</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    // ---------- Scene setup ----------
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a1a);
+    scene.fog = new THREE.Fog(0x0a0a1a, 8, 20);
+
+    const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 1.6, 4);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.2, 0);
+    controls.enableDamping = true;
+
+    // Ambient light
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+    // Ground grid
+    const grid = new THREE.GridHelper(20, 40, 0x222244, 0x222244);
+    scene.add(grid);
+
+    // ---------- Pretext-style text panel simulation ----------
+    // Since this demo runs standalone without @chenglou/pretext bundled,
+    // we simulate the pipeline: measure -> canvas -> texture -> plane
+
+    function createTextPanel(opts) {
+      const {
+        text, font = "24px Inter, sans-serif", maxWidth = 400,
+        lineHeight = 32, color = "#ffffff",
+        backgroundColor = "rgba(10,10,30,0.85)", padding = 24,
+        borderRadius = 14, worldWidth = 2, position, rotation,
+      } = opts;
+
+      // Simple word-wrap (in production, Pretext does this properly)
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.font = font;
+
+      const words = text.split(/(\s+)/);
+      const lines = [];
+      let current = "";
+      for (const w of words) {
+        const test = current + w;
+        if (ctx.measureText(test).width > maxWidth - padding * 2 && current.trim()) {
+          lines.push(current.trimEnd());
+          current = w.trimStart();
+        } else {
+          current = test;
+        }
+      }
+      if (current.trim()) lines.push(current.trimEnd());
+
+      const contentW = Math.ceil(Math.max(...lines.map(l => ctx.measureText(l).width)));
+      const tw = contentW + padding * 2;
+      const th = lines.length * lineHeight + padding * 2;
+      canvas.width = tw;
+      canvas.height = th;
+
+      // Background
+      ctx.beginPath();
+      ctx.moveTo(borderRadius, 0);
+      ctx.arcTo(tw, 0, tw, th, borderRadius);
+      ctx.arcTo(tw, th, 0, th, borderRadius);
+      ctx.arcTo(0, th, 0, 0, borderRadius);
+      ctx.arcTo(0, 0, tw, 0, borderRadius);
+      ctx.closePath();
+      ctx.fillStyle = backgroundColor;
+      ctx.fill();
+
+      // Text
+      ctx.font = font;
+      ctx.fillStyle = color;
+      ctx.textBaseline = "top";
+      lines.forEach((line, i) => {
+        ctx.fillText(line, padding, padding + i * lineHeight);
+      });
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const aspect = tw / th;
+      const worldH = worldWidth / aspect;
+      const geo = new THREE.PlaneGeometry(worldWidth, worldH);
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture, transparent: true, side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      if (position) mesh.position.copy(position);
+      if (rotation) mesh.rotation.copy(rotation);
+      return mesh;
+    }
+
+    // ---------- Panels ----------
+
+    // Main panel
+    scene.add(createTextPanel({
+      text: "Welcome to pretext-webxr! This library renders properly-wrapped multi-line text in WebXR scenes using Pretext for layout measurement and Canvas textures for rendering.",
+      font: "22px Inter, sans-serif",
+      maxWidth: 440,
+      lineHeight: 30,
+      worldWidth: 2.2,
+      position: new THREE.Vector3(0, 2.0, -2),
+    }));
+
+    // Left panel
+    scene.add(createTextPanel({
+      text: "Pipeline:\n1. Pretext measures text\n2. Canvas 2D renders it\n3. THREE.CanvasTexture uploads\n4. PlaneGeometry displays",
+      font: "18px monospace",
+      maxWidth: 340,
+      lineHeight: 26,
+      color: "#88ff88",
+      backgroundColor: "rgba(0,40,0,0.85)",
+      worldWidth: 1.6,
+      position: new THREE.Vector3(-2.2, 1.5, -1),
+      rotation: new THREE.Euler(0, 0.35, 0),
+    }));
+
+    // Right panel
+    scene.add(createTextPanel({
+      text: "Why not troika-three-text? Pretext gives you proper line breaking, kerning, and measurement without SDF artifacts. Works in VR headsets at any resolution.",
+      font: "18px Inter, sans-serif",
+      maxWidth: 320,
+      lineHeight: 26,
+      color: "#ffcc66",
+      backgroundColor: "rgba(40,30,0,0.85)",
+      worldWidth: 1.6,
+      position: new THREE.Vector3(2.2, 1.5, -1),
+      rotation: new THREE.Euler(0, -0.35, 0),
+    }));
+
+    // Billboard (score counter)
+    const billboardMesh = createTextPanel({
+      text: "Score: 0",
+      font: "28px Inter, sans-serif",
+      maxWidth: 220,
+      lineHeight: 36,
+      color: "#ffffff",
+      backgroundColor: "rgba(120,0,200,0.85)",
+      padding: 16,
+      worldWidth: 0.8,
+      position: new THREE.Vector3(0, 3.2, -1.5),
+    });
+    scene.add(billboardMesh);
+
+    // Small label on a cube
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.4, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x4488ff })
+    );
+    cube.position.set(1, 0.6, 0.5);
+    scene.add(cube);
+    scene.add(new THREE.DirectionalLight(0xffffff, 0.8));
+
+    const labelMesh = createTextPanel({
+      text: "Interactive Cube",
+      font: "14px Inter, sans-serif",
+      maxWidth: 180,
+      lineHeight: 20,
+      padding: 8,
+      worldWidth: 0.5,
+      position: new THREE.Vector3(1, 1.1, 0.5),
+    });
+    scene.add(labelMesh);
+
+    // ---------- Animation ----------
+    let score = 0;
+    let elapsed = 0;
+
+    function animate(time) {
+      requestAnimationFrame(animate);
+      const dt = time * 0.001;
+      elapsed = dt;
+
+      // Billboard faces camera
+      billboardMesh.lookAt(camera.position);
+
+      // Label follows cube (bobbing)
+      cube.position.y = 0.6 + Math.sin(dt * 2) * 0.1;
+      cube.rotation.y = dt * 0.5;
+      labelMesh.position.y = cube.position.y + 0.5;
+      labelMesh.lookAt(camera.position);
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    // Resize
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>

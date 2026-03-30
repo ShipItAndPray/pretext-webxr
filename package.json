@@ -1,0 +1,50 @@
+{
+  "name": "@shipitandpray/pretext-webxr",
+  "version": "1.0.0",
+  "description": "Render properly-wrapped multi-line text in WebXR/Three.js scenes using Pretext for layout.",
+  "author": "ShipItAndPray",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "npx serve ."
+  },
+  "peerDependencies": {
+    "three": ">=0.150.0",
+    "@chenglou/pretext": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@chenglou/pretext": "^0.0.3",
+    "@types/three": "^0.172.0",
+    "three": "^0.172.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "keywords": [
+    "webxr",
+    "three.js",
+    "threejs",
+    "text",
+    "vr",
+    "ar",
+    "pretext",
+    "3d-text",
+    "canvas-texture",
+    "billboard",
+    "xr"
+  ]
+}
