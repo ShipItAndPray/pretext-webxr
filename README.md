@@ -1,5 +1,9 @@
 # @shipitandpray/pretext-webxr
 
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://shipitandpray.github.io/pretext-webxr/) [![GitHub](https://img.shields.io/github/stars/ShipItAndPray/pretext-webxr?style=social)](https://github.com/ShipItAndPray/pretext-webxr)
+
+> **[View Live Demo](https://shipitandpray.github.io/pretext-webxr/)**
+
 Render properly-wrapped multi-line text in WebXR / Three.js scenes using [Pretext](https://github.com/chenglou/pretext) for layout.
 
 The first library to solve text in VR/AR properly.
